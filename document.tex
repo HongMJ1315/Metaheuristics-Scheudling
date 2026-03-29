@@ -7,6 +7,8 @@
 \usepackage{graphicx}
 \usepackage{textcomp}
 \usepackage{xcolor}
+\usepackage{float}
+\usepackage{subcaption}
 
 % ====== 新增以下這段來支援中文 ======
 \usepackage{xeCJK}
@@ -177,8 +179,12 @@ $$H = \sum_{k=0}^{n-1} (arr[k] + 1) \cdot p^k \pmod q$$
 \end{itemize}
 
 
-\textbf{特赦條件 (Aspiration Criterion)} \\
+
+\begin{itemize}
+    \textbf{特赦條件 (Aspiration Criterion)} \\
 無論使用何種記錄方式，若產生的相鄰解其 Makespan 嚴格小於歷史最佳解（Global Best），則觸發特赦機制，演算法將無視禁忌狀態強制接受該解。
+
+\end{itemize}
 
 \subsection{Gnuplot Visualizer}
 為了直觀分析演算法的收斂行為與跳脫區域最佳解的過程，本實作內建了基於 \texttt{Gnuplot} 的視覺化工具。程式透過 \texttt{popen} 開啟 \texttt{gnuplot} 的行程通訊（Pipe），並利用標準輸入字元 \texttt{'-'} 將 C++ 陣列中的 \texttt{best\_makespan\_history} 與 \texttt{makespan\_history} 即時傳遞給繪圖引擎。
@@ -240,6 +246,51 @@ tai100\_20\_1 & \textbf{6732} & \textbf{6842.4} & 6976 & 6744 & 6854.2 & 6927 & 
 }
 \end{table}
 
+為了進一步從視覺上驗證冷卻參數的影響，圖 \ref{fig:sa_traj} 展示了大型測資 \texttt{tai100\_20\_1} 在四種不同 $T$ 與 $\alpha$ 組合下的搜尋軌跡。
+
+由圖 \ref{fig:sa_traj}(a) 與 (b) 可觀察到，當採用較慢的降溫率 ($\alpha=0.95$) 時，代表當代解的紅線在迭代前期與中期能維持較大範圍的震盪。這表明演算法在較長的時間內保有接受劣解的能力，使得歷史最佳解（藍線）有機會隨著迭代逐步且穩定地下降，展現出良好的探索（Diversification）與開發（Intensification）平衡。
+
+反觀圖 \ref{fig:sa_traj}(c) 與 (d)，當降溫率過快 ($\alpha=0.8$) 時，無論初始溫度高低，紅線的震盪幅度在不到 100 代內便迅速收斂並趨於平緩。這意味著系統溫度驟降，演算法過早失去接受劣解的機率，實質上退化為單純的 Iterative Improvement。從圖中可見，藍線在極早期就呈現水平停滯，完美印證了表格中快速降溫容易陷入區域最佳解（Premature Convergence）的結論。
+
+綜合而言，對於如 \texttt{tai100\_20\_1} 這種解空間龐大的實例，給予足夠的初始溫度 ($T=1000$) 以跨越初期的巨大屏障，並搭配緩慢的降溫排程 ($\alpha=0.95$) 來延長全域搜尋的壽命，是取得較佳且穩定解的關鍵。
+
+\begin{figure}[H]
+    \centering
+    % 第一列
+    \begin{subfigure}{0.4\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{./tex_img/diff_sa_para/SA_tai100_20_1_T1000.000000_C0.950000_6863.jpg}
+        \caption{$T=1000, \alpha=0.95$ (慢速降溫)}
+        \label{fig:sa_t1000_c095}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}{0.4\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{./tex_img/diff_sa_para/SA_tai100_20_1_T100.000000_C0.950000_6802.jpg}
+        \caption{$T=100, \alpha=0.95$ (慢速降溫)}
+        \label{fig:sa_t100_c095}
+    \end{subfigure}
+    
+    \vspace{0.3cm} % 增加兩列之間的垂直間距
+    
+    % 第二列
+    \begin{subfigure}{0.4\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{./tex_img/diff_sa_para/SA_tai100_20_1_T1000.000000_C0.800000_6834.jpg}
+        \caption{$T=1000, \alpha=0.8$ (快速降溫)}
+        \label{fig:sa_t1000_c08}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}{0.4\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{./tex_img/diff_sa_para/SA_tai100_20_1_T100.000000_C0.800000_6853.jpg}
+        \caption{$T=100, \alpha=0.8$ (快速降溫)}
+        \label{fig:sa_t100_c08}
+    \end{subfigure}
+    
+    \caption{tai100\_20\_1 測資在不同 SA 冷卻參數下之搜尋軌跡比較}
+    \label{fig:sa_traj}
+\end{figure}
 
 
 \subsection{Different Length of Tabu Tenure for TS}
@@ -249,7 +300,7 @@ tai100\_20\_1 & \textbf{6732} & \textbf{6842.4} & 6976 & 6744 & 6854.2 & 6927 & 
 分析原因在於，當 $L=5$ 時禁忌名單過短，導致演算法容易在少數幾個區域最佳解之間發生循環（Cycling），缺乏足夠的多樣化（Diversification）能力來探索未知的解空間。反之，適當增加禁忌長度能有效強迫搜尋軌跡遠離已造訪過的結構；其中 $L=10$ 在部分小型測資（如 tai20 系列）能靈活找到更低的最小值（Min），而 $L=15$ 則在大型測資（如 tai100 系列）中展現出更強的探索能力與更穩定的平均收斂品質。
 
 
-\begin{table}[htbp]
+\begin{table}[H]
 \caption{TS 不同禁忌長度對結果之影響}
 \label{tab:ts_para}
 \centering
@@ -272,13 +323,39 @@ tai50\_5\_1 & \textbf{2724} & 2743.80 & 2758 & \textbf{2724} & 2745.70 & 2774 & 
 }
 \end{table}
 
+為了進一步從視覺上驗證上述推論，我們繪製了 \texttt{tai20\_20\_1} 測資在不同禁忌長度下的搜尋軌跡。
+
+如圖 \ref{fig:ts_traj} (a) 所示，當 $L=5$ 時，當代解的完工時間（紅線）在迭代過程中呈現小幅度的密集震盪，且歷史最佳解（藍線）在搜尋前期便陷入停滯（Makespan = 2313），顯示演算法在局部區域內發生了嚴重的循環（Cycling）現象而無法逃脫。
+
+相對地，如圖 \ref{fig:ts_traj} (b) 所示，當 $L=10$ 時，當代解的軌跡展現出更頻繁且更大幅度的爬升。這直觀地證明了較長的禁忌名單有效地封鎖了短期內的回溯路徑，強迫演算法接受暫時較差的解以跳脫區域最佳解（Local Optima）。藉由這種強制多樣化（Diversification）的機制，演算法成功在搜尋中後期發掘出更優的全局解（Makespan = 2306）。
+
+\begin{figure}[H]
+    \centering
+    % 請確保您的 LaTeX 導言區有引入 \usepackage{graphicx} 與 \usepackage{subcaption}
+    \begin{subfigure}{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{tex_img/diff_tabu_len/TS_tai20_20_1TS_L5_2313.jpg}
+        \caption{$L=5$ 搜尋軌跡}
+        \label{fig:traj_L5}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{tex_img/diff_tabu_len/TS_tai20_20_1TS_L10_2306.jpg}
+        \caption{$L=10$ 搜尋軌跡}
+        \label{fig:traj_L10}
+    \end{subfigure}
+    \caption{tai20\_20\_1 測資在不同禁忌長度下之搜尋軌跡比較}
+    \label{fig:ts_traj}
+\end{figure}
+
 \subsection{Different Storing Objective for TS}
 % 不同Tabu List記憶內容的差別
 最後比較移動禁忌 (Move-based) 與 狀態雜湊禁忌 (State-based Hash)。如表 \ref{tab:ts_logic} 所示，移動禁忌在多數情況下的平均完工時間與搜尋穩定性均優於狀態雜湊禁忌。
 如表 \ref{tab:ts_logic} 所示，\textbf{移動禁忌} 在多數情況下的平均完工時間均優於雜湊禁忌。
 分析原因在於，雜湊禁忌僅能防止回到「完全相同」的解，對於鄰域中極其相似的解空間缺乏約束力，
 而移動禁忌則能強制搜尋跳脫目前的結構區域。
-\begin{table}[htbp]
+\begin{table}[H]
 \caption{Move-based 與 State-based Hash 之效能比較}
 \label{tab:ts_logic}
 \centering
@@ -301,198 +378,39 @@ tai100\_20\_1 & \textbf{6394} & \textbf{6449.60} & 6528 & 6453 & 6540.45 & 6614 
 }
 \end{table}
 
+為了進一步分析此效能差異，圖 \ref{fig:ts_traj_tai20_10_1} 提供了 \texttt{tai20\_10\_1} 測資在兩種禁忌物件下的搜尋軌跡比較。
 
+如圖 \ref{fig:ts_traj_tai20_10_1}(a) 所示，\textbf{移動禁忌} (Move-based, TS) 的搜尋軌跡呈現有序的優化過程。紅線（當代解）在探索過程中雖有震盪，但能有效在 promising 區域深入挖掘，藍線（歷史最佳解）呈現明顯的階梯式下降，最終收斂至較佳的解 (1583)。
+
+相較之下，圖 \ref{fig:ts_traj_tai20_10_1}(b) 的 \textbf{狀態雜湊禁忌} (State-based Hash, TS2) 軌跡則十分雜亂且低效。紅線（當代解）頻繁出現極大幅度的向上跳躍（Makespan 飆升至 1800 以上），且藍線（歷史最佳解）在迭代非常早期（約 30 代）後即陷入長期的停滯 (1593)。這直觀地印證了前述分析：TS2 僅能防止回到「完全相同」的排列配置，但對於結構極其相似的鄰域缺乏約束力。演算法在禁止了目前優解後，由於鄰域內其他相似排列未被禁忌且Makespan亦佳，導致演算法被「困」在同一個局部區域的盆地（Basin）中反覆跳躍，藍線因此無法有效下降，尋優能力顯著遜於移動禁忌。
+
+\begin{figure}[H]
+    \centering
+    % 請確保您的 LaTeX 導言區有引入 \usepackage{graphicx} 與 \usepackage{subcaption}
+    \begin{subfigure}{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{./tex_img/diff_tabu_obj/TS_tai20_10_1_1583.jpg}
+        \caption{TS (Move-based, 結果: 1583)}
+        \label{fig:traj_ts1}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{./tex_img/diff_tabu_obj/TS2_tai20_10_1_1593.jpg}
+        \caption{TS2 (State-based, 結果: 1593)}
+        \label{fig:traj_ts2}
+    \end{subfigure}
+    \caption{tai20\_10\_1 測資在不同禁忌物件下之搜尋軌跡比較}
+    \label{fig:ts_traj_tai20_10_1}
+\end{figure}
 
 \section{Conclusion}
 本研究成功實作並比較了 II、SA 與 TS 三種啟發式演算法於定序流線型工廠排程問題之表現。透過大量的實驗數據分析，得出以下主要結論：首先，在演算法對比中，TS 憑藉其獨特的記憶機制，在大型測資（如 tai100 系列）中顯著優於受限於貪婪策略的 II 以及需精細調參的 SA。其次，在 SA 參數研究中，證實了較慢的降溫率雖增加計算代價，但能有效提升解的品質。
 最重要的發現在於禁忌搜尋記憶內容的影響。實驗證明，相較於記錄完整解狀態的「狀態雜湊禁忌」，「移動禁忌」具備更強的搜尋多樣化 (Diversification) 能力。由於雜湊禁忌僅能精確避開曾出現過的單點解，容易在相似結構的鄰域間產生震盪；而移動禁忌透過封鎖特定的交換路徑，能有效強制演算法探索全新的解空間。
 未來的研究方向可考慮結合 SA 的接受機率與 TS 的禁忌名單，開發混合型啟發式演算法 (Hybrid Metaheuristics)，或引入動態禁忌長度調整機制，以進一步提升在極大規模工業排程問題上的運算效率。
 
-\begin{thebibliography}{00}
-\bibitem{b7} M. Young, The Technical Writer's Handbook. Mill Valley, CA: University Science, 1989.
-\end{thebibliography}
-
-
-% \section{Prepare Your Paper Before Styling}
-% formatting. Please note sections \ref{AA}--\ref{SCM} below for more information on 
-
-% \subsection{Abbreviations and Acronyms}\label{AA}
-
-% \subsection{Units}
-% \begin{itemize}
-% \item Use either SI (MKS) or CGS as primary units. (SI units are encouraged.) English units may be used as secondary units (in parentheses). An exception would be the use of English units as identifiers in trade, such as ``3.5-inch disk drive''.
-% \item Avoid combining SI and CGS units, such as current in amperes and magnetic field in oersteds. This often leads to confusion because equations do not balance dimensionally. If you must use mixed units, clearly state the units for each quantity that you use in an equation.
-% \item Do not mix complete spellings and abbreviations of units: ``Wb/m\textsuperscript{2}'' or ``webers per square meter'', not ``webers/m\textsuperscript{2}''. Spell out units when they appear in text: ``. . . a few henries'', not ``. . . a few H''.
-% \item Use a zero before decimal points: ``0.25'', not ``.25''. Use ``cm\textsuperscript{3}'', not ``cc''.)
-% \end{itemize}
-
-
-% \begin{equation}
-% a+b=\gamma\label{eq}
-% \end{equation}
-
-% the equation. Use ``\eqref{eq}'', not ``Eq.~\eqref{eq}'' or ``equation \eqref{eq}'', except at 
-% the beginning of a sentence: ``Equation \eqref{eq} is . . .''
-
-% Please use ``soft'' (e.g., \verb|\eqref{Eq}|) cross references instead
-% of ``hard'' references (e.g., \verb|(1)|). That will make it possible
-% to combine sections, add equations, or change the order of figures or
-% citations without having to go through the file line by line.
-
-% Please don't use the \verb|{eqnarray}| equation environment. Use
-% \verb|{align}| or \verb|{IEEEeqnarray}| instead. The \verb|{eqnarray}|
-% environment leaves unsightly spaces around relation symbols.
-
-% Please note that the \verb|{subequations}| environment in {\LaTeX}
-% will increment the main equation counter even when there are no
-% equation numbers displayed. If you forget that, you might write an
-% article in which the equation numbers skip from (17) to (20), causing
-% the copy editors to wonder if you've discovered a new method of
-% counting.
-
-% {\BibTeX} does not work by magic. It doesn't get the bibliographic
-% data from thin air but from .bib files. If you use {\BibTeX} to produce a
-% bibliography you must send the .bib files. 
-
-% {\LaTeX} can't read your mind. If you assign the same label to a
-% subsubsection and a table, you might find that Table I has been cross
-% referenced as Table IV-B3. 
-
-% {\LaTeX} does not have precognitive abilities. If you put a
-% \verb|\label| command before the command that updates the counter it's
-% supposed to be using, the label will pick up the last counter to be
-% cross referenced instead. In particular, a \verb|\label| command
-% should not go before the caption of a figure or a table.
-
-% Do not use \verb|\nonumber| inside the \verb|{array}| environment. It
-% will not stop equation numbers inside \verb|{array}| (there won't be
-% any anyway) and it might stop a wanted equation number in the
-% surrounding equation.
-
-% \subsection{Some Common Mistakes}\label{SCM}
-% \begin{itemize}
-% \item The word ``data'' is plural, not singular.
-% \item The subscript for the permeability of vacuum $\mu_{0}$, and other common scientific constants, is zero with subscript formatting, not a lowercase letter ``o''.
-% \item In American English, commas, semicolons, periods, question and exclamation marks are located within quotation marks only when a complete thought or name is cited, such as a title or full quotation. When quotation marks are used, instead of a bold or italic typeface, to highlight a word or phrase, punctuation should appear outside of the quotation marks. A parenthetical phrase or statement at the end of a sentence is punctuated outside of the closing parenthesis (like this). (A parenthetical sentence is punctuated within the parentheses.)
-% \item A graph within a graph is an ``inset'', not an ``insert''. The word alternatively is preferred to the word ``alternately'' (unless you really mean something that alternates).
-% \item Do not use the word ``essentially'' to mean ``approximately'' or ``effectively''.
-% \item In your paper title, if the words ``that uses'' can accurately replace the word ``using'', capitalize the ``u''; if not, keep using lower-cased.
-% \item Be aware of the different meanings of the homophones ``affect'' and ``effect'', ``complement'' and ``compliment'', ``discreet'' and ``discrete'', ``principal'' and ``principle''.
-% \item Do not confuse ``imply'' and ``infer''.
-% \item The prefix ``non'' is not a word; it should be joined to the word it modifies, usually without a hyphen.
-% \item There is no period after the ``et'' in the Latin abbreviation ``et al.''.
-% \item The abbreviation ``i.e.'' means ``that is'', and the abbreviation ``e.g.'' means ``for example''.
-% \end{itemize}
-% An excellent style manual for science writers is \cite{b7}.
-
-% \subsection{Authors and Affiliations}
-% \textbf{The class file is designed for, but not limited to, six authors.} A 
-% minimum of one author is required for all conference articles. Author names 
-% should be listed starting from left to right and then moving down to the 
-% next line. This is the author sequence that will be used in future citations 
-% and by indexing services. Names should not be listed in columns nor group by 
-% affiliation. Please keep your affiliations as succinct as possible (for 
-% example, do not differentiate among departments of the same organization).
-
-% \subsection{Identify the Headings}
-% Headings, or heads, are organizational devices that guide the reader through 
-% your paper. There are two types: component heads and text heads.
-
-% Component heads identify the different components of your paper and are not 
-% topically subordinate to each other. Examples include Acknowledgments and 
-% References and, for these, the correct style to use is ``Heading 5''. Use 
-% ``figure caption'' for your Figure captions, and ``table head'' for your 
-% table title. Run-in heads, such as ``Abstract'', will require you to apply a 
-% style (in this case, italic) in addition to the style provided by the drop 
-% down menu to differentiate the head from the text.
-
-% Text heads organize the topics on a relational, hierarchical basis. For 
-% example, the paper title is the primary text head because all subsequent 
-% material relates and elaborates on this one topic. If there are two or more 
-% sub-topics, the next level head (uppercase Roman numerals) should be used 
-% and, conversely, if there are not at least two sub-topics, then no subheads 
-% should be introduced.
-
-% \subsection{Figures and Tables}
-% \paragraph{Positioning Figures and Tables} Place figures and tables at the top and 
-% bottom of columns. Avoid placing them in the middle of columns. Large 
-% figures and tables may span across both columns. Figure captions should be 
-% below the figures; table heads should appear above the tables. Insert 
-% figures and tables after they are cited in the text. Use the abbreviation 
-% ``Fig.~\ref{fig}'', even at the beginning of a sentence.
-
-% \begin{table}[htbp]
-% \caption{Table Type Styles}
-% \begin{center}
-% \begin{tabular}{|c|c|c|c|}
-% \hline
-% \textbf{Table}&\multicolumn{3}{|c|}{\textbf{Table Column Head}} \\
-% \cline{2-4} 
-% \textbf{Head} & \textbf{\textit{Table column subhead}}& \textbf{\textit{Subhead}}& \textbf{\textit{Subhead}} \\
-% \hline
-% copy& More table copy$^{\mathrm{a}}$& &  \\
-% \hline
-% \multicolumn{4}{l}{$^{\mathrm{a}}$Sample of a Table footnote.}
-% \end{tabular}
-% \label{tab1}
-% \end{center}
-% \end{table}
-
-% \begin{figure}[htbp]
-% \centerline{\includegraphics{fig1.png}}
-% \caption{Example of a figure caption.}
-% \label{fig}
-% \end{figure}
-
-% Figure Labels: Use 8 point Times New Roman for Figure labels. Use words 
-% rather than symbols or abbreviations when writing Figure axis labels to 
-% avoid confusing the reader. As an example, write the quantity 
-% ``Magnetization'', or ``Magnetization, M'', not just ``M''. If including 
-% units in the label, present them within parentheses. Do not label axes only 
-% with units. In the example, write ``Magnetization (A/m)'' or ``Magnetization 
-% \{A[m(1)]\}'', not just ``A/m''. Do not label axes with a ratio of 
-% quantities and units. For example, write ``Temperature (K)'', not 
-% ``Temperature/K''.
-
-% \section*{Acknowledgment}
-
-% The preferred spelling of the word ``acknowledgment'' in America is without 
-% an ``e'' after the ``g''. Avoid the stilted expression ``one of us (R. B. 
-% G.) thanks $\ldots$''. Instead, try ``R. B. G. thanks$\ldots$''. Put sponsor 
-% acknowledgments in the unnumbered footnote on the first page.
-
-% \section*{References}
-
-% Please number citations consecutively within brackets \cite{b1}. The 
-% sentence punctuation follows the bracket \cite{b2}. Refer simply to the reference 
-% number, as in \cite{b3}---do not use ``Ref. \cite{b3}'' or ``reference \cite{b3}'' except at 
-% the beginning of a sentence: ``Reference \cite{b3} was the first $\ldots$''
-
-% Number footnotes separately in superscripts. Place the actual footnote at 
-% the bottom of the column in which it was cited. Do not put footnotes in the 
-% abstract or reference list. Use letters for table footnotes.
-
-% Unless there are six authors or more give all authors' names; do not use 
-% ``et al.''. Papers that have not been published, even if they have been 
-% submitted for publication, should be cited as ``unpublished'' \cite{b4}. Papers 
-% that have been accepted for publication should be cited as ``in press'' \cite{b5}. 
-% Capitalize only the first word in a paper title, except for proper nouns and 
-% element symbols.
-
-% For papers published in translation journals, please give the English 
-% citation first, followed by the original foreign-language citation \cite{b6}.
-
 % \begin{thebibliography}{00}
-% \bibitem{b1} G. Eason, B. Noble, and I. N. Sneddon, ``On certain integrals of Lipschitz-Hankel type involving products of Bessel functions,'' Phil. Trans. Roy. Soc. London, vol. A247, pp. 529--551, April 1955.
-% \bibitem{b2} J. Clerk Maxwell, A Treatise on Electricity and Magnetism, 3rd ed., vol. 2. Oxford: Clarendon, 1892, pp.68--73.
-% \bibitem{b3} I. S. Jacobs and C. P. Bean, ``Fine particles, thin films and exchange anisotropy,'' in Magnetism, vol. III, G. T. Rado and H. Suhl, Eds. New York: Academic, 1963, pp. 271--350.
-% \bibitem{b4} K. Elissa, ``Title of paper if known,'' unpublished.
-% \bibitem{b5} R. Nicole, ``Title of paper with only first word capitalized,'' J. Name Stand. Abbrev., in press.
-% \bibitem{b6} Y. Yorozu, M. Hirano, K. Oka, and Y. Tagawa, ``Electron spectroscopy studies on magneto-optical media and plastic substrate interface,'' IEEE Transl. J. Magn. Japan, vol. 2, pp. 740--741, August 1987 [Digests 9th Annual Conf. Magnetics Japan, p. 301, 1982].
 % \bibitem{b7} M. Young, The Technical Writer's Handbook. Mill Valley, CA: University Science, 1989.
 % \end{thebibliography}
-% \vspace{12pt}
-% \color{red}
-% IEEE conference templates contain guidance text for composing and formatting conference papers. Please ensure that all template text is removed from your conference paper prior to submission to the conference. Failure to remove the template text from your paper may result in your paper not being published.
 
 \end{document}
