@@ -11,6 +11,7 @@
 #include <omp.h> // 引入 OpenMP 標頭檔
 #include <unordered_map>
 #include <cstdint>
+#include <unordered_set>
 
 namespace fs = std::filesystem;
 
@@ -104,7 +105,7 @@ private:
     Scheduling &evaluator;
     int num_jobs;
     std::mt19937 rng;
-    std::vector<int> makespan_history, best_makespan_history;
+    std::vector<int> makespan_history, best_makespan_history, median_makespan_history;
     // 產生單一隨機個體
 
 
@@ -337,7 +338,7 @@ private:
         return { offspring1, offspring2 };
     }
 
-    
+
     // --- 新增：突變算子 (Swap Mutation) ---
     void mutate(Individual &ind, double mutation_rate){
         std::uniform_real_distribution<double> prob(0.0, 1.0);
@@ -363,20 +364,51 @@ private:
             fprintf(pipe, "set xlabel 'Iteration'\n");
             fprintf(pipe, "set ylabel 'Makespan'\n");
 
-            fprintf(pipe, "plot '-' with lines title 'Best Makespan' lc rgb 'blue', '-' with lines title 'Current Makespan' lc rgb 'red'\n");
+            // 判斷是否有中位數資料 (GA 專用)
+            bool has_median = !median_makespan_history.empty();
 
+            if(has_median){
+                fprintf(pipe, "plot '-' with lines title 'Best Makespan' lc rgb 'blue', "
+                    "'-' with lines title 'Current/Gen Best Makespan' lc rgb 'red', "
+                    "'-' with lines title 'Population Median' lc rgb 'green'\n");
+            }
+            else{
+                fprintf(pipe, "plot '-' with lines title 'Best Makespan' lc rgb 'blue', "
+                    "'-' with lines title 'Current Makespan' lc rgb 'red'\n");
+            }
+
+            // 傳送最佳解資料 (藍線)
             for(size_t i = 0; i < best_makespan_history.size(); ++i){
                 fprintf(pipe, "%zu %d\n", i, best_makespan_history[i]);
             }
             fprintf(pipe, "e\n");
 
+            // 傳送當代/探索解資料 (紅線)
             for(size_t i = 0; i < makespan_history.size(); ++i){
                 fprintf(pipe, "%zu %d\n", i, makespan_history[i]);
             }
             fprintf(pipe, "e\n");
 
+            // 如果有中位數，傳送中位數資料 (綠線)
+            if(has_median){
+                for(size_t i = 0; i < median_makespan_history.size(); ++i){
+                    fprintf(pipe, "%zu %d\n", i, median_makespan_history[i]);
+                }
+                fprintf(pipe, "e\n");
+            }
+
             fflush(pipe);
             pclose(pipe);
+        }
+    }
+
+    std::string cross_str(MetaheuristicSolver::CrossoverType type){
+        switch(type){
+            case OX: return "OX";
+            case LOX: return "LOX";
+            case PMX: return "PMX";
+            case CX: return "CX";
+            default: return "Unknown";
         }
     }
 
@@ -386,15 +418,25 @@ public:
         rng = std::mt19937(rd());
     }
 
+
+
     // ==========================================
     // 基因演算法 (Genetic Algorithm) 主程式
     // ==========================================
-    std::vector<int> genetic_algorithm(int pop_size = 50, int max_gen = 500, double crossover_rate = 0.8, double mutation_rate = 0.1,
+// ==========================================
+    // 基因演算法 (Genetic Algorithm) 主程式
+    // ==========================================
+// ==========================================
+    // 基因演算法 (Genetic Algorithm) 主程式
+    // ==========================================
+    std::vector<int> genetic_algorithm(int pop_size = 50, int max_gen = 1000, double crossover_rate = 0.8, double mutation_rate = 0.1, CrossoverType crossover_type = OX, bool with_tabu = false,
         std::string instance_name = "Instance", std::string save_dir = "./img"){
-        std::cout << "Run GA with Order Crossover (OX)" << std::endl;
+
+        std::cout << "Run GA with " << cross_str(crossover_type) << (with_tabu ? " (Tabu Enabled)" : "") << std::endl;
 
         best_makespan_history.clear();
         makespan_history.clear();
+        median_makespan_history.clear();
 
         // 1. 初始化族群 (Initialization)
         std::vector<Individual> population;
@@ -407,43 +449,164 @@ public:
 
         std::uniform_real_distribution<double> prob(0.0, 1.0);
 
+        // Tabu Hash 相關設定 (僅在 with_tabu == true 時發揮作用)
+        std::unordered_map<uint64_t, int> tabu_list;
+        int tabu_tenure = 10;
+
+        auto compute_hash = [](const std::vector<int> &arr) -> uint64_t{
+            uint64_t hash_val = 0;
+            uint64_t p_pow = 1;
+            const uint64_t p = 313;
+            for(size_t i = 0; i < arr.size(); ++i){
+                hash_val += (arr[i] + 1) * p_pow;
+                p_pow *= p;
+            }
+            return hash_val;
+        };
+
         // 世代演化迴圈
         for(int gen = 0; gen < max_gen; ++gen){
             std::vector<Individual> next_generation;
+            std::unordered_set<uint64_t> current_pop_hashes;
 
-            // 菁英保留策略 (Elitism)：將上一代最好的個體直接複製到下一代
+            // 菁英保留策略 (Elitism)
             Individual current_best = *std::min_element(population.begin(), population.end());
             next_generation.push_back(current_best);
 
+            if(with_tabu){
+                uint64_t best_hash = compute_hash(current_best.chromosome);
+                current_pop_hashes.insert(best_hash);
+                tabu_list[best_hash] = gen + tabu_tenure;
+            }
+
             // 產生下一代 (直到數量等於 pop_size)
             while(next_generation.size() < pop_size){
-                // 選擇父母 (Tournament Selection)
                 Individual p1 = tournament_selection(population);
                 Individual p2 = tournament_selection(population);
-                Individual offspring1, offspring2;
+                Individual off1, off2;
 
-                // 交配 (Crossover)
-                if(prob(rng) < crossover_rate){
-                    auto offsprings = order_crossover(p1, p2);
-                    offspring1 = offsprings.first;
-                    offspring2 = offsprings.second;
+                if(!with_tabu){
+                    // ====================================================
+                    // 路徑 A：原本的純粹 GA (不執行重複排除與排序禁忌)
+                    // ====================================================
+                    if(prob(rng) < crossover_rate){
+                        if(crossover_type == OX){
+                            auto offsprings = order_crossover(p1, p2);
+                            off1 = offsprings.first; off2 = offsprings.second;
+                        }
+                        else if(crossover_type == LOX){
+                            auto offsprings = linear_order_crossover(p1, p2);
+                            off1 = offsprings.first; off2 = offsprings.second;
+                        }
+                        else if(crossover_type == PMX){
+                            auto offsprings = partially_mapped_crossover(p1, p2);
+                            off1 = offsprings.first; off2 = offsprings.second;
+                        }
+                        else if(crossover_type == CX){
+                            auto offsprings = cycle_crossover(p1, p2);
+                            off1 = offsprings.first; off2 = offsprings.second;
+                        }
+                    }
+                    else{
+                        off1 = (prob(rng) < 0.5) ? p1 : p2;
+                        off2 = (prob(rng) < 0.5) ? p1 : p2;
+                    }
+
+                    mutate(off1, mutation_rate);
+                    mutate(off2, mutation_rate);
+
+                    off1.makespan = evaluator.run_scheduling(off1.chromosome);
+                    off2.makespan = evaluator.run_scheduling(off2.chromosome);
+
+                    next_generation.push_back(off1);
+                    if(next_generation.size() < pop_size){
+                        next_generation.push_back(off2);
+                    }
                 }
                 else{
-                    // 如果不交配，隨機複製其中一個父母
-                    offspring1 = (prob(rng) < 0.5) ? p1 : p2;
-                    offspring2 = (prob(rng) < 0.5) ? p1 : p2;
-                }
+                    // ====================================================
+                    // 路徑 B：加上 Tabu 與同代重複排除機制的 GA
+                    // ====================================================
+                    bool off1_valid = false;
+                    bool off2_valid = false;
+                    int retries = 0;
 
-                // 突變 (Mutation)
-                mutate(offspring1, mutation_rate);
-                mutate(offspring2, mutation_rate);
+                    while(retries < 10 && (!off1_valid || !off2_valid)){
+                        Individual temp1 = p1, temp2 = p2;
 
-                // 重新評估適應度 (Makespan)
-                offspring1.makespan = evaluator.run_scheduling(offspring1.chromosome);
-                offspring2.makespan = evaluator.run_scheduling(offspring2.chromosome);
+                        // 交配 (Crossover)
+                        if(prob(rng) < crossover_rate){
+                            if(crossover_type == OX){
+                                auto offsprings = order_crossover(p1, p2);
+                                temp1 = offsprings.first; temp2 = offsprings.second;
+                            }
+                            else if(crossover_type == LOX){
+                                auto offsprings = linear_order_crossover(p1, p2);
+                                temp1 = offsprings.first; temp2 = offsprings.second;
+                            }
+                            else if(crossover_type == PMX){
+                                auto offsprings = partially_mapped_crossover(p1, p2);
+                                temp1 = offsprings.first; temp2 = offsprings.second;
+                            }
+                            else if(crossover_type == CX){
+                                auto offsprings = cycle_crossover(p1, p2);
+                                temp1 = offsprings.first; temp2 = offsprings.second;
+                            }
+                        }
 
-                next_generation.push_back(offspring1);
-                next_generation.push_back(offspring2);
+                        // 突變 (Mutation)
+                        mutate(temp1, mutation_rate);
+                        mutate(temp2, mutation_rate);
+
+                        uint64_t h1 = compute_hash(temp1.chromosome);
+                        uint64_t h2 = compute_hash(temp2.chromosome);
+
+                        if(!off1_valid){
+                            bool is_tabu = ((tabu_list.count(h1) && tabu_list[h1] > gen) || current_pop_hashes.count(h1));
+                            if(!is_tabu){
+                                temp1.makespan = evaluator.run_scheduling(temp1.chromosome);
+                                off1 = temp1;
+                                off1_valid = true;
+                                current_pop_hashes.insert(h1);
+                                tabu_list[h1] = gen + tabu_tenure;
+                            }
+                        }
+
+                        if(!off2_valid && (next_generation.size() + (off1_valid ? 1 : 0) < pop_size)){
+                            bool is_tabu = ((tabu_list.count(h2) && tabu_list[h2] > gen) || current_pop_hashes.count(h2));
+                            if(!is_tabu){
+                                temp2.makespan = evaluator.run_scheduling(temp2.chromosome);
+                                off2 = temp2;
+                                off2_valid = true;
+                                current_pop_hashes.insert(h2);
+                                tabu_list[h2] = gen + tabu_tenure;
+                            }
+                        }
+                        else if(next_generation.size() + (off1_valid ? 1 : 0) >= pop_size){
+                            off2_valid = true;
+                        }
+
+                        retries++;
+                    }
+
+                    if(!off1_valid){
+                        off1 = generate_random_individual();
+                        uint64_t h1 = compute_hash(off1.chromosome);
+                        current_pop_hashes.insert(h1);
+                        tabu_list[h1] = gen + tabu_tenure;
+                    }
+                    next_generation.push_back(off1);
+
+                    if(next_generation.size() < pop_size){
+                        if(!off2_valid){
+                            off2 = generate_random_individual();
+                            uint64_t h2 = compute_hash(off2.chromosome);
+                            current_pop_hashes.insert(h2);
+                            tabu_list[h2] = gen + tabu_tenure;
+                        }
+                        next_generation.push_back(off2);
+                    }
+                } // End of else (路徑 B)
             }
 
             // 更新族群
@@ -455,14 +618,22 @@ public:
                 global_best = current_best;
             }
 
-            // 紀錄歷史軌跡 (用來畫圖)
-            // 群體演算法通常紀錄 "該代最佳解" 與 "歷史最佳解"
+            // 計算中位數
+            std::vector<int> current_makespans(pop_size);
+            for(int i = 0; i < pop_size; ++i){
+                current_makespans[i] = population[i].makespan;
+            }
+            std::nth_element(current_makespans.begin(), current_makespans.begin() + pop_size / 2, current_makespans.end());
+            int current_median = current_makespans[pop_size / 2];
+
             makespan_history.push_back(current_best.makespan);
             best_makespan_history.push_back(global_best.makespan);
+            median_makespan_history.push_back(current_median);
         }
 
         std::cout << "GA Result: " << global_best.makespan << std::endl;
-        save_plot(save_dir, "GA", instance_name, global_best.makespan);
+        std::string prefix = "GA_" + cross_str(crossover_type) + (with_tabu ? "_Tabu" : "");
+        save_plot(save_dir, prefix, instance_name, global_best.makespan);
         return global_best.chromosome;
     }
 
@@ -494,10 +665,11 @@ void calculate_and_write_stats(std::ofstream &csv, const std::string &name, cons
 
 int main(){
 
-    MetaheuristicSolver solver(*(new Scheduling()), 10);
-    solver.cross_test();
+    #define TABU_TEST true
+    // MetaheuristicSolver solver(*(new Scheduling()), 10);
+    // solver.cross_test();
 
-    /*
+    // /*
     std::string test_case_dir = "./Test_case";
     if(!fs::exists(test_case_dir) || !fs::is_directory(test_case_dir)){
         std::cerr << "找不到資料夾: " << test_case_dir << "\n";
@@ -505,7 +677,7 @@ int main(){
     }
 
     std::ofstream csv_file("results.csv");
-    csv_file << "Instance,II_Min,II_Avg,II_Max,SA_Min,SA_Avg,SA_Max,TS_Min,TS_Avg,TS_Max\n";
+    csv_file << "Instance,GA_OX_Min,GA_OX_Avg,GA_OX_Max,GA_LOX_Min,GA_LOX_Avg,GA_LOX_Max,GA_PMX_Min,GA_PMX_Avg,GA_PMX_Max,GA_CX_Min,GA_CX_Avg,GA_CX_Max\n";
 
     int NUM_RUNS = 20;
 
@@ -521,7 +693,11 @@ int main(){
             Scheduling scheduler;
             scheduler.job_mtx = tc.job_mtx;
 
-            std::vector<int> ga_results(NUM_RUNS);
+            std::vector<int> ox_results(NUM_RUNS);
+            std::vector<int> lox_results(NUM_RUNS);
+            std::vector<int> pmx_results(NUM_RUNS);
+            std::vector<int> cx_results(NUM_RUNS);
+
 
             for(int run = 1; run <= NUM_RUNS; ++run){
                 fs::create_directories("./img/Test_" + std::to_string(run));
@@ -532,7 +708,17 @@ int main(){
                 std::string save_dir = "./img/Test_" + std::to_string(run);
 
                 MetaheuristicSolver solver(scheduler, tc.num_jobs);
-                solver.genetic_algorithm(50, 500, 0.8, 0.1, tc.instance_name + "_GA", save_dir);
+                std::vector<int> ox_res = solver.genetic_algorithm(50, 1000, 0.8, 0.1, MetaheuristicSolver::OX, TABU_TEST, tc.instance_name + "_GA_OX", save_dir);
+                ox_results[run - 1] = scheduler.run_scheduling(ox_res);
+
+                std::vector<int> lox_res = solver.genetic_algorithm(50, 1000, 0.8, 0.1, MetaheuristicSolver::LOX, TABU_TEST, tc.instance_name + "_GA_LOX", save_dir);
+                lox_results[run - 1] = scheduler.run_scheduling(lox_res);
+
+                std::vector<int> pmx_res = solver.genetic_algorithm(50, 1000, 0.8, 0.1, MetaheuristicSolver::PMX, TABU_TEST, tc.instance_name + "_GA_PMX", save_dir);
+                pmx_results[run - 1] = scheduler.run_scheduling(pmx_res);
+
+                std::vector<int> cx_res = solver.genetic_algorithm(50, 1000, 0.8, 0.1, MetaheuristicSolver::CX, TABU_TEST, tc.instance_name + "_GA_CX", save_dir);
+                cx_results[run - 1] = scheduler.run_scheduling(cx_res);
 
 #pragma omp critical
                 {
@@ -541,7 +727,10 @@ int main(){
             }
 
             csv_file << tc.instance_name << ",";
-            calculate_and_write_stats(csv_file, "GA", ga_results);
+            calculate_and_write_stats(csv_file, "GA_OX", ox_results);
+            calculate_and_write_stats(csv_file, "GA_LOX", lox_results);
+            calculate_and_write_stats(csv_file, "GA_PMX", pmx_results);
+            calculate_and_write_stats(csv_file, "GA_CX", cx_results);
             csv_file << "\n";
 
             std::cout << ">> " << tc.instance_name << " 統計資料已寫入 results.csv\n";
@@ -550,6 +739,6 @@ int main(){
 
     csv_file.close();
     std::cout << "所有測資執行完畢！結果已匯出至 results.csv\n";
-// */
+    // */
     return 0;
 }
