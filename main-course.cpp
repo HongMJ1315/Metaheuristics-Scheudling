@@ -12,6 +12,7 @@
 #include <unordered_map>
 #include <cstdint>
 #include <unordered_set>
+#include <cmath>
 
 namespace fs = std::filesystem;
 
@@ -503,9 +504,9 @@ public:
 
 
     // ==========================================
-    // 基因演算法 (Genetic Algorithm) 主程式
+    // 迷因演算法 (Genetic Algorithm) 主程式
     // ==========================================
-    std::vector<int> genetic_algorithm(int pop_size = 50, int max_gen = 1000, double crossover_rate = 0.8, double mutation_rate = 0.1, double local_search_rate = 0.2,
+    std::vector<int> memetic_algorithm(int pop_size = 50, int max_gen = 1000, double crossover_rate = 0.8, double mutation_rate = 0.1, double local_search_rate = 0.2,
         CrossoverType crossover_type = OX, bool with_tabu = false, bool dynamic_tabu = false, bool do_neh = false,
         std::string instance_name = "Instance", std::string save_dir = "./img"){
 
@@ -804,7 +805,7 @@ int main(){
                 std::string save_dir = "./img/Test_" + std::to_string(run);
 
                 MetaheuristicSolver solver(scheduler, tc.num_jobs);
-                std::vector<int> ox_res = solver.genetic_algorithm(50, 1000, 0.8, 0.5, 0.1, 
+                std::vector<int> ox_res = solver.memetic_algorithm(50, 1000, 0.8, 0.5, 0.1, 
                     MetaheuristicSolver::OX, true, false, false,
                     tc.instance_name + "_GA_OX_tabu", save_dir);
                 int makespan = scheduler.run_scheduling(ox_res);
@@ -816,13 +817,13 @@ int main(){
 
 
 
-                // std::vector<int> lox_res = solver.genetic_algorithm(50, 1000, 0.8, 0.1, MetaheuristicSolver::LOX, TABU_TEST, tc.instance_name + "_GA_LOX", save_dir);
+                // std::vector<int> lox_res = solver.memetic_algorithm(50, 1000, 0.8, 0.1, MetaheuristicSolver::LOX, TABU_TEST, tc.instance_name + "_GA_LOX", save_dir);
                 // lox_results[run - 1] = scheduler.run_scheduling(lox_res);
 
-                // std::vector<int> pmx_res = solver.genetic_algorithm(50, 1000, 0.8, 0.1, MetaheuristicSolver::PMX, TABU_TEST, tc.instance_name + "_GA_PMX", save_dir);
+                // std::vector<int> pmx_res = solver.memetic_algorithm(50, 1000, 0.8, 0.1, MetaheuristicSolver::PMX, TABU_TEST, tc.instance_name + "_GA_PMX", save_dir);
                 // pmx_results[run - 1] = scheduler.run_scheduling(pmx_res);
 
-                // std::vector<int> cx_res = solver.genetic_algorithm(50, 1000, 0.8, 0.1, MetaheuristicSolver::CX, TABU_TEST, tc.instance_name + "_GA_CX", save_dir);
+                // std::vector<int> cx_res = solver.memetic_algorithm(50, 1000, 0.8, 0.1, MetaheuristicSolver::CX, TABU_TEST, tc.instance_name + "_GA_CX", save_dir);
                 // cx_results[run - 1] = scheduler.run_scheduling(cx_res);
 
 #pragma omp critical
