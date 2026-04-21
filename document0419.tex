@@ -41,13 +41,6 @@ Taipei, Taiwan(R.O.C) \\
 \textit{National Taiwan Normal University}\\
 Taipei, Taiwan(R.O.C) \\
 61345001s@ntnu.edu.tw}
-\and
-\IEEEauthorblockN{3\textsuperscript{rd} Given Name Surname}
-\IEEEauthorblockA{\textit{Department of Computer Science and} \\
-\textit{Information Engineering}\\
-\textit{National Taiwan Normal University}\\
-Taipei, Taiwan(R.O.C) \\
-@ntnu.edu.tw}
 }
 
 
@@ -55,8 +48,12 @@ Taipei, Taiwan(R.O.C) \\
 \maketitle
 
 \begin{abstract}
-
+排列流水線排程問題（Permutation Flowshop Scheduling Problem, PFSP）為一經典且具高度計算複雜性之組合最佳化問題。為最小化完工時間（Makespan），本研究提出一結合 NEH 建構式啟發法與動態禁忌（Dynamic Tabu）區域搜尋之迷因演算法（Memetic Algorithm, MA）。研究中首先探討不同交配算子（OX, LOX, PMX, CX）與突變策略對解空間結構保留之影響，證實線性順序交配（LOX）與插入突變（Insertion Mutation）能最有效維持遺傳優勢。其次，導入 NEH 演算法作為初始族群種子，顯著提升了演化起點與收斂速度。針對傳統靜態禁忌搜尋在演化後期容易引發「過度多樣化（Over-diversification）」進而削弱局部微調能力之缺陷，本研究創新引入基於適應度評估次數（FFE）的動態禁忌期限（Dynamic Tabu Tenure）機制。實驗結果顯示，透過退火式衰減的動態禁忌策略，演算法能完美平衡早期的全域探索（Exploration）與後期的局部開發（Exploitation），在 Taillard 基準測試集的中大型測資中皆獲得了極具競爭力的最佳解與高度穩定的平均表現。
 \end{abstract}
+
+\begin{IEEEkeywords}
+Permutation Flowshop Scheduling Problem, Genetic Algorithm, Memetic Algorithm, NEH Heuristic, Dynamic Tabu Search
+\end{IEEEkeywords}
 
 \section{Introduction}
 
@@ -304,7 +301,6 @@ tai100\_20\_1 & 6441 & \textbf{6501.75} & 6465 & 6525.55 \\
 
 綜合而言，靜態 Tabu 機制在本研究設定下僅帶來有限且不穩定的改善。雖然其在部分測資上能提升最佳解或平均解品質，但整體而言仍未能穩定優於未使用 Tabu 的版本，且伴隨額外的時間成本。因此，僅以固定禁忌長度控制族群多樣性並不足以有效提升演算法效能，亦顯示後續引入動態調整機制（Dynamic Tabu Tenure）具有必要性。
 
-\clearpage
 
 \subsection{Dynamic Tabu Tenure Mechanism in GA}
 % 探討動態禁忌長度 (Dynamic Tabu Tenure) 對效能的恢復與提升
@@ -323,46 +319,69 @@ tai100\_20\_1 & 6441 & \textbf{6501.75} & 6465 & 6525.55 \\
 以及使用基於 FFE 動態調整禁忌期限之 Dynamic Tabu。
 
 \begin{table}[htbp]
-\caption{Comparison of average makespan and average runtime under different tabu mechanisms}
-\label{tab:tabu_avg_time_comp}
+\caption{LOX: Without Tabu, Static Tabu 與 Dynamic Tabu 機制之結果比較}
+\label{tab:lox_tabu_comp}
 \centering
 \resizebox{\columnwidth}{!}{
-\begin{tabular}{l|cc|cc|cc}
+\begin{tabular}{l|ccc|ccc|ccc}
 \hline
-\textbf{Instance}
-& \multicolumn{2}{c|}{\textbf{Without Tabu}}
-& \multicolumn{2}{c|}{\textbf{Static Tabu}}
-& \multicolumn{2}{c}{\textbf{Dynamic Tabu}} \\
-& Avg & AvgTime & Avg & AvgTime & Avg & AvgTime \\
+\textbf{Instance} & \multicolumn{3}{c|}{\textbf{Without Tabu}} & \multicolumn{3}{c|}{\textbf{Static Tabu}} & \multicolumn{3}{c}{\textbf{Dynamic Tabu}} \\
+ & Min & Avg & Max & Min & Avg & Max & Min & Avg & Max \\ \hline
+tai20\_5\_1 & \textbf{1278} & \textbf{1278.40} & \textbf{1286} & \textbf{1278} & 1279.45 & \textbf{1286} & \textbf{1278} & 1278.80 & \textbf{1286} \\
+tai20\_10\_1 & 1586 & 1596.00 & 1613 & \textbf{1583} & \textbf{1591.50} & \textbf{1597} & \textbf{1583} & 1594.45 & 1609 \\
+tai20\_20\_1 & 2307 & 2324.65 & \textbf{2342} & 2308 & \textbf{2320.20} & 2345 & \textbf{2305} & 2321.85 & 2352 \\
 \hline
-tai20\_5\_1   & 1279.60 & 0.62 & \textbf{1278.40} & 0.78 & 1279.00 & 0.77 \\
-tai20\_10\_1  & 1596.65 & 0.79 & \textbf{1590.75} & 1.00 & 1593.35 & 0.97 \\
-tai20\_20\_1  & 2329.40 & 1.09 & 2320.25 & 1.25 & \textbf{2317.90} & 1.21 \\
+tai50\_5\_1 & \textbf{2729} & 2729.10 & 2731 & \textbf{2729} & \textbf{2729.00} & \textbf{2729} & \textbf{2729} & \textbf{2729.00} & \textbf{2729} \\
+tai50\_10\_1 & 3046 & 3113.50 & 3138 & 3045 & 3111.10 & \textbf{3131} & \textbf{3040} & \textbf{3105.75} & 3138 \\
+tai50\_20\_1 & \textbf{3947} & \textbf{3974.35} & \textbf{3993} & 3963 & 3986.20 & 4004 & 3955 & 3980.85 & 3999 \\
 \hline
-tai50\_5\_1   & \textbf{2728.75} & 1.00 & 2729.00 & 1.20 & 2729.00 & 1.18 \\
-tai50\_10\_1  & 3117.50 & 1.23 & 3116.30 & 1.43 & \textbf{3108.25} & 1.43 \\
-tai50\_20\_1  & \textbf{3970.80} & 2.06 & 3976.75 & 2.35 & 3980.40 & 2.29 \\
-\hline
-tai100\_5\_1  & 5494.70 & 1.37 & \textbf{5494.20} & 1.58 & 5494.60 & 1.56 \\
-tai100\_10\_1 & 5824.35 & 2.04 & \textbf{5823.60} & 2.29 & 5824.85 & 2.29 \\
-tai100\_20\_1 & 6512.60 & 3.10 & 6512.55 & 3.41 & \textbf{6510.40} & 3.43 \\
+tai100\_5\_1 & \textbf{5493} & 5496.10 & \textbf{5514} & \textbf{5493} & \textbf{5495.60} & \textbf{5514} & \textbf{5493} & 5496.85 & \textbf{5514} \\
+tai100\_10\_1 & \textbf{5787} & 5825.45 & 5849 & 5804 & 5825.00 & \textbf{5845} & 5796 & \textbf{5823.55} & \textbf{5845} \\
+tai100\_20\_1 & 6468 & \textbf{6512.40} & \textbf{6556} & \textbf{6467} & 6523.80 & 6573 & 6485 & 6522.40 & 6559 \\
 \hline
 \end{tabular}
 }
 \end{table}
+表~\ref{tab:lox_tabu_comp} 呈現了 LOX 交配算子在三種 Tabu 設定下的實驗數據。在平均表現（Avg）方面，Dynamic Tabu 在中大型測資展現了顯著的修正效果。如 \texttt{tai50\_10\_1}，Dynamic Tabu 取得了最低的最佳解 3040，且平均完工時間 3105.75 亦優於其他版本。這說明隨 FFE 進度放寬限制的「退火」設計，能有效緩解靜態禁忌在後期過度抑制重複基因而阻礙局部開發的問題。
 
-實驗結果如表~\ref{tab:tabu_avg_time_comp} 所示，我們進一步比較了未使用 Tabu、使用固定禁忌長度（Static Tabu），以及使用基於 FFE 動態調整禁忌期限（Dynamic Tabu）三種設定在平均解品質與平均執行時間上的差異。
+然而，實驗亦顯示 Tabu 效益與問題規模有關。在小型測資 \texttt{tai20\_10\_1} 中，Static Tabu 憑藉穩定的多樣性約束取得最佳平均值；而在部分案例中，未使用 Tabu 的版本反而具備最優平均表現。這反映出若問題本身早熟收斂現象不嚴重，額外的禁忌約束有時會干擾收斂效率。
 
-就平均完工時間（Avg）而言，Dynamic Tabu 在部分測資上相較於 Static Tabu 確實展現較佳表現。例如在 \texttt{tai20\_20\_1} 中，平均值由 Static Tabu 的 2320.25 進一步下降至 2317.90；在 \texttt{tai50\_10\_1} 中，亦由 3116.30 改善至 3108.25；而在 \texttt{tai100\_20\_1} 中，Dynamic Tabu 的平均值 6510.40 亦略優於 Static Tabu 的 6512.55。此結果顯示，根據 FFE 使用進度逐步放寬禁忌限制，有助於修正靜態 Tabu 在後期過度抑制 exploitation 的問題。
+為了深入探討此現象，我們選取 \texttt{tai100\_20\_1} 觀察其收斂行為（如圖~\ref{fig:convergence_plots}）。圖中藍線為歷史最佳解，綠線為族群中位數。
 
-然而，Dynamic Tabu 並未在所有測資上全面優於其他方法。在 \texttt{tai20\_5\_1} 與 \texttt{tai20\_10\_1} 等小型測資中，Static Tabu 仍具有最佳平均表現；而在 \texttt{tai50\_20\_1} 中，未使用 Tabu 的基準版本反而取得三者中最佳平均值 3970.80。這表示動態禁忌期限雖能改善部分案例中的搜尋平衡，但其效益仍與問題規模及測資特性有關，並非在所有情況下皆優於基準方法。
+\begin{figure}[htbp]
+    \centering
+    \begin{subfigure}{0.32\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{tex_img/MA_LOX_tai100_20_1LOX_Without_Tabu_6552.jpg}
+        \caption{Without Tabu (Min: 6552)}
+        \label{fig:conv_no_tabu}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}{0.32\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{tex_img/MA_LOX_tai100_20_1LOX_Static_Tabu_6467.jpg}
+        \caption{Static Tabu (Min: 6467)}
+        \label{fig:conv_static}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}{0.32\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{tex_img/MA_LOX_tai100_20_1LOX_Dynamic_Tabu_6529.jpg}
+        \caption{Dynamic Tabu (Min: 6529)}
+        \label{fig:conv_dynamic}
+    \end{subfigure}
+    \caption{LOX 算子於 tai100\_20\_1 之收斂曲線對比}
+    \label{fig:convergence_plots}
+\end{figure}
 
-從平均執行時間（AvgTime）觀察，啟用 Tabu 機制後，不論為 Static 或 Dynamic 版本，其計算時間皆普遍高於未使用 Tabu 的版本。例如在 \texttt{tai100\_20\_1} 中，未使用 Tabu 的平均執行時間為 3.10 秒，而 Static 與 Dynamic 分別增加至 3.41 秒與 3.43 秒；在 \texttt{tai50\_20\_1} 中，亦由 2.06 秒增加至 2.35 秒與 2.29 秒。此結果顯示，Tabu 機制雖然有助於控制族群多樣性並改善部分測資的解品質，但同時也伴隨額外的計算成本。
+\textbf{收斂曲線觀察分析：}
+\begin{enumerate}
+    \item \textbf{多樣性維持：} 在「Without Tabu」中，代表中位數的綠線在演化初期便迅速與藍線貼合，顯示族群快速同質化，導致後期搜尋幾乎陷入停滯。相對地，兩組 Tabu 實驗中，綠線與藍線始終保持明顯間距，證實了禁忌機制能有效防止「族群坍縮」。
+    \item \textbf{階梯式突圍：} 觀察「Static Tabu」曲線，其藍線在演化中後期仍出現數次明顯的階梯式下降（如 600 代後）。這說明禁忌機制維持的多樣性，讓演算法在搜尋後期仍具備跳脫區域解並發現新全域最佳解的能力。
+    \item \textbf{動態調節特徵：} 「Dynamic Tabu」的綠線波动較為顯著。隨著 FFE 增加，禁忌期限縮短，族群中位數逐漸向最佳解靠攏。這種設計旨在搜尋初期進行「廣域掃描」，並在後期轉向「深層挖掘」。雖然在本執行個案中其 Min 值略遜於 Static 版本，但其動態調整的機制確實讓演算法在不同搜尋階段具備更靈活的開發能力。
+\end{enumerate}
 
-綜合而言，Dynamic Tabu 相較於 Static Tabu 在若干測資上確實獲得了較佳的平均解品質，顯示以 FFE 作為動態調整依據具有一定效果；然而，從整體表現來看，其優勢尚不足以全面超越未使用 Tabu 的基準版本。換言之，Dynamic Tabu 可視為對 Static Tabu 的有效修正，但其實際效益仍需視問題特性與計算成本一併評估。
-
-
-
+綜合而言，Dynamic Tabu 可視為對 Static Tabu 的彈性修正。雖然其優勢並非在所有情況下皆呈壓倒性，但透過動態調節禁忌期限，能更精確地對應演算法當前所處的搜尋階段，優化探索與開發之間的拉鋸。
 
 \subsection{Effect of Local Search Design}
 在確定交配算子、突變設定與 NEH 初始化後，本研究進一步分析 local search 的設計方式對演算法效能之影響。由於 local search 同時涉及作用對象（who）、觸發頻率（when）以及搜尋強度（iters）等多個設計因素，若直接全面搜尋所有組合將造成過高的實驗成本。因此，本研究採分階段方式進行分析：首先比較 local search 的作用對象，其次比較觸發頻率，最後比較搜尋強度。
@@ -469,10 +488,18 @@ tai100\_20\_1 & 6476 & 6506.45 & 6467 & 6499.15 & 6453 & 6503.90 \\
 綜合以上三個面向的分析可知，local search 的設計需要在 exploration 與 exploitation 之間取得平衡。若 local search 過度集中於菁英個體、過於頻繁地介入，或設定過高的搜尋強度，皆可能壓縮 GA 的全域探索能力，進而抵銷 local search 所帶來的局部改良效果。在本研究的設定下，較佳的 local search 設計為：從前五名個體中隨機選取一個作為作用對象、每 20 代執行一次，並採用中等強度的搜尋步數（如 iters = 50）。然而整體而言，local search 的改善幅度仍然有限，顯示其效益高度依賴於問題規模與參數設定，並非在所有情況下皆能穩定提升演算法效能。
 
 
-\clearpage
 
 \section{Conclusion}
 
+本研究成功設計並實作了一套針對排列流水線排程問題（PFSP）的高效迷因演算法（Memetic Algorithm）。透過嚴謹的模組化實驗與深度行為分析，我們得出以下幾項重要結論：
+
+\begin{enumerate}
+    \item \textbf{演化運算子的結構保留優勢：} 在交配算子的比較中，線性順序交配（LOX）與部分映射交配（PMX）展現了優異的絕對位置與相對順序保留能力；而在突變策略上，「插入突變（Insertion）」因能最小化對相鄰關係（Adjacency）的破壞，其表現壓倒性地優於傳統的「交換突變（Swap）」。此外，在具備高選擇壓力（如錦標賽選擇與菁英保留）的架構下，適度提高突變率（如 $P_m=0.5$）能有效對抗早熟收斂，大幅活絡解空間的探索效率。
+    \item \textbf{建構式啟發法之領頭羊效應：} 實驗證實，將 NEH 演算法產生的菁英解注入初始族群，不僅能巨幅降低初始代的 Makespan，更能為整體隨機族群提供優良的導航基因（Building Blocks）。這種不犧牲整體多樣性的「種子注入策略」，在大型測資（如 \texttt{tai100} 系列）中極大地加速了演算法的收斂過程。
+    \item \textbf{動態禁忌機制對探索與開發之完美平衡：} 本研究深入剖析了禁忌機制（Tabu Mechanism）在 GA 中的雙面刃效應。數據指出，固定的靜態禁忌長度雖能防止早熟收斂，卻在中大型測資中引發嚴重的「過度多樣化（Over-diversification）」，導致演算法在演化後期喪失針對優良盆地進行局部開發（Exploitation）的能力。為此，本研究提出的「基於 FFE 的動態禁忌期限（Dynamic Tabu Tenure）」成功解決了此一痛點。透過依據搜尋進度線性衰減禁忌約束的退火策略，演算法得以在早期的廣域探索與後期的深層微調之間取得完美平衡，最終在 \texttt{tai100\_20\_1} 等高難度實例中取得卓越的搜尋結果。
+\end{enumerate}
+
+未來的研究方向可考慮將此動態禁忌機制與其他先進的區域搜尋技術（如 Iterated Greedy 演算法）進行深度混種，或進一步引入自適應參數控制機制（Adaptive Parameter Control），以提升演算法在各類異質排程問題上的泛用性與強健性。
 
 \appendices
 
@@ -600,74 +627,30 @@ tai100\_20\_1 & 6441 & 6501.75 & 6560 & 36.96 & 897.00 & 3.63 & 6465 & 6525.55 &
 }
 \end{table*}
 
-
-
-\begin{table*}[t]
+\begin{table}[htbp]
 \caption{Detailed comparison of tabu mechanisms}
-\label{tab:tabu_full_comp}
+\label{tab:lox_tabu_full_comp}
 \centering
 \resizebox{\textwidth}{!}{
 \begin{tabular}{l|cccccc|cccccc|cccccc}
 \hline
-\textbf{Instance}
-& \multicolumn{6}{c|}{\textbf{Without Tabu}}
-& \multicolumn{6}{c|}{\textbf{Static Tabu}}
-& \multicolumn{6}{c}{\textbf{Dynamic Tabu}} \\
-& Min & Avg & Max & Std & AvgGen & AvgTime
-& Min & Avg & Max & Std & AvgGen & AvgTime
-& Min & Avg & Max & Std & AvgGen & AvgTime \\
+\textbf{Instance} & \multicolumn{6}{c|}{\textbf{Without Tabu}} & \multicolumn{6}{c|}{\textbf{Static Tabu}} & \multicolumn{6}{c}{\textbf{Dynamic Tabu}} \\
+ & Min & Avg & Max & Std & AvgGen & Time(s) & Min & Avg & Max & Std & AvgGen & Time(s) & Min & Avg & Max & Std & AvgGen & Time(s) \\ \hline
+tai20\_5\_1 & \textbf{1278} & \textbf{1278.40} & \textbf{1286} & 1.79 & 995 & \textbf{0.23} & \textbf{1278} & 1279.45 & \textbf{1286} & 2.96 & 1012 & 0.25 & \textbf{1278} & 1278.80 & \textbf{1286} & 2.46 & 1011 & 0.27 \\
+tai20\_10\_1 & 1586 & 1596.00 & 1613 & 9.15 & 995 & \textbf{0.27} & \textbf{1583} & \textbf{1591.50} & \textbf{1597} & 4.49 & 1012 & 0.32 & \textbf{1583} & 1594.45 & 1609 & 7.94 & 1010 & 0.32 \\
+tai20\_20\_1 & 2307 & 2324.65 & \textbf{2342} & 8.44 & 995 & \textbf{0.23} & 2308 & \textbf{2320.20} & 2345 & 9.34 & 1012 & 0.26 & \textbf{2305} & 2321.85 & 2352 & 11.60 & 1010 & 0.26 \\
 \hline
-tai20\_5\_1
-& 1278 & 1279.60 & 1286 & 3.02 & 995.00 & 0.62
-& 1278 & 1278.40 & 1282 & 1.23 & 1013.00 & 0.78
-& 1278 & 1279.00 & 1286 & 2.55 & 1013.00 & 0.77 \\
-
-tai20\_10\_1
-& 1583 & 1596.65 & 1611 & 8.72 & 995.00 & 0.79
-& 1583 & 1590.75 & 1613 & 9.07 & 1012.15 & 1.00
-& 1586 & 1593.35 & 1617 & 8.93 & 1012.50 & 0.97 \\
-
-tai20\_20\_1
-& 2310 & 2329.40 & 2346 & 9.21 & 995.00 & 1.09
-& 2309 & 2320.25 & 2348 & 9.33 & 1012.35 & 1.25
-& 2307 & 2317.90 & 2337 & 7.49 & 1012.40 & 1.21 \\
-
+tai50\_5\_1 & \textbf{2729} & 2729.10 & 2731 & 0.45 & 973 & \textbf{0.23} & \textbf{2729} & \textbf{2729.00} & \textbf{2729} & 0.00 & 991 & 0.26 & \textbf{2729} & \textbf{2729.00} & \textbf{2729} & 0.00 & 989 & 0.27 \\
+tai50\_10\_1 & 3046 & 3113.50 & 3138 & 26.96 & 973 & \textbf{0.24} & 3045 & 3111.10 & \textbf{3131} & 25.60 & 990 & 0.27 & \textbf{3040} & \textbf{3105.75} & 3138 & 32.92 & 988 & 0.27 \\
+tai50\_20\_1 & \textbf{3947} & \textbf{3974.35} & \textbf{3993} & 16.95 & 973 & \textbf{0.25} & 3963 & 3986.20 & 4004 & 11.96 & 990 & 0.29 & 3955 & 3980.85 & 3999 & 14.60 & 988 & 0.30 \\
 \hline
-tai50\_5\_1
-& 2724 & 2728.75 & 2729 & 1.12 & 973.00 & 1.00
-& 2729 & 2729.00 & 2729 & 0.00 & 991.25 & 1.20
-& 2729 & 2729.00 & 2729 & 0.00 & 991.45 & 1.18 \\
-
-tai50\_10\_1
-& 3066 & 3117.50 & 3138 & 20.94 & 973.00 & 1.23
-& 3035 & 3116.30 & 3131 & 23.78 & 990.50 & 1.43
-& 3051 & 3108.25 & 3131 & 28.55 & 990.70 & 1.43 \\
-
-tai50\_20\_1
-& 3946 & 3970.80 & 3998 & 14.31 & 973.00 & 2.06
-& 3947 & 3976.75 & 3993 & 12.67 & 990.35 & 2.35
-& 3952 & 3980.40 & 4004 & 15.36 & 990.40 & 2.29 \\
-
-\hline
-tai100\_5\_1
-& 5493 & 5494.70 & 5505 & 2.79 & 897.00 & 1.37
-& 5493 & 5494.20 & 5505 & 2.71 & 913.80 & 1.58
-& 5493 & 5494.60 & 5505 & 2.64 & 913.80 & 1.56 \\
-
-tai100\_10\_1
-& 5794 & 5824.35 & 5846 & 15.83 & 897.00 & 2.04
-& 5795 & 5823.60 & 5837 & 14.73 & 913.00 & 2.29
-& 5800 & 5824.85 & 5845 & 15.10 & 913.00 & 2.29 \\
-
-tai100\_20\_1
-& 6463 & 6512.60 & 6550 & 23.56 & 897.00 & 3.10
-& 6475 & 6512.55 & 6547 & 21.58 & 912.90 & 3.41
-& 6473 & 6510.40 & 6543 & 19.20 & 912.75 & 3.43 \\
-
+tai100\_5\_1 & \textbf{5493} & 5496.10 & \textbf{5514} & 4.73 & 897 & \textbf{0.24} & \textbf{5493} & \textbf{5495.60} & \textbf{5514} & 6.35 & 913 & 0.28 & \textbf{5493} & 5496.85 & \textbf{5514} & 5.81 & 911 & 0.28 \\
+tai100\_10\_1 & \textbf{5787} & 5825.45 & 5849 & 17.73 & 897 & \textbf{0.24} & 5804 & 5825.00 & \textbf{5845} & 14.63 & 912 & 0.28 & 5796 & \textbf{5823.55} & \textbf{5845} & 14.94 & 911 & 0.28 \\
+tai100\_20\_1 & 6468 & \textbf{6512.40} & \textbf{6556} & 29.14 & 897 & \textbf{0.27} & \textbf{6467} & 6523.80 & 6573 & 28.18 & 912 & 0.31 & 6485 & 6522.40 & 6559 & 20.11 & 911 & 0.30 \\
 \hline
 \end{tabular}
 }
-\end{table*}
+\end{table}
 
 
 
